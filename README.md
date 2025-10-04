@@ -2,9 +2,9 @@
 
 Stream live GPS feeds into **Kafka**, process them with **PySpark Structured Streaming**, store results in **MongoDB**, and visualize on a **Leaflet** web map. Includes ready-to-run producers for **MBTA (Boston transit)** and **OpenSky (aircraft)**.
 
-![stack](https://img.shields.io/badge/Stack-Kafka%20%E2%86%92%20PySpark%20%E2%86%92%20MongoDB%20%E2%86%92%20Leaflet-0a84ff?logo=datadog&logoColor=white)
-![python](https://img.shields.io/badge/Python-3.8+-3776AB?logo=python&logoColor=white)
-![spark](https://img.shields.io/badge/Spark-3.5.1-FD4D0C?logo=apache%20spark&logoColor=white)
+![stack](https://img.shields.io/badge/Stack-Kafka%20%E2%86%92%20PySpark%20%E2%86%92%20MongoDB%20%E2%86%92%20Leaflet-0a84ff)
+![python](https://img.shields.io/badge/Python-3.8%2B-3776AB?logo=python&logoColor=white)
+![spark](https://img.shields.io/badge/Spark-3.5.1-FD4D0C?logo=apachespark&logoColor=white)
 ![kafka](https://img.shields.io/badge/Kafka-3.x-231F20?logo=apachekafka&logoColor=white)
 ![mongodb](https://img.shields.io/badge/MongoDB-6.x-13AA52?logo=mongodb&logoColor=white)
 ![leaflet](https://img.shields.io/badge/Leaflet-UI-199900?logo=leaflet&logoColor=white)
@@ -12,9 +12,23 @@ Stream live GPS feeds into **Kafka**, process them with **PySpark Structured Str
 
 ---
 
-## 🧭 System Design (High-Level)
+## 🧭 System Design
 
 ```mermaid
+%%{init: {'theme':'neutral','themeVariables': {
+  'fontSize':'14px','lineColor':'#9aa0a6','primaryTextColor':'#111'
+}}}%%
+flowchart LR
+  A[Producers<br/>(MBTA • OpenSky • Simulator)] -->|JSON events| B[(Kafka Topic<br/>mobility.positions.v1)]
+  B -->|Structured Streaming| C[PySpark Job<br/>H3 snap + 5-min windows]
+  C -->|upsert| D[(MongoDB)<br/>tiles • positions_latest]
+  D --> E[Flask API<br/>/api/tiles/latest<br/>/api/positions/latest]
+  E --> F[Leaflet UI<br/>Hex heatmap + markers]
+  classDef node fill:#ffffff,stroke:#cfcfcf,rx:8,ry:8;
+  class A,B,C,D,E,F node;
+⏱️ Streaming Timing (micro-batch)
+mermaid
+Copy code
 sequenceDiagram
 autonumber
 participant P as Producer
@@ -32,16 +46,23 @@ loop Every ~2s (trigger)
   W->>M: GET tiles/positions (REST)
   M-->>W: GeoJSON (hexes & markers)
 end
+🖼️ Screenshot
+Replace the path below with your own image file.
+
+Example after you add your image:
+![Live heatmap](assets/heatmap.png)
+
+
 ✨ Features
-🔄 Live ingest from public feeds (MBTA / OpenSky) → Kafka
+🔄 Live ingest from MBTA / OpenSky → Kafka
 
-⚡ Streaming compute (micro-batches) with PySpark Structured Streaming
+⚡ PySpark Structured Streaming micro-batches (low latency)
 
-🧭 H3 hex grid tiles (5-minute windows + TTL cleanup)
+🧭 H3 hex tiles (5-min windows + TTL cleanup)
 
 📍 Latest vehicle positions per provider (idempotent upserts)
 
-🗺️ Leaflet UI: hex intensity layer + live markers (auto refresh)
+🗺️ Leaflet UI with hex intensity + markers (auto refresh)
 
 📁 Project Layout
 graphql
@@ -52,6 +73,7 @@ Copy code
 ├─ producers/
 │  ├─ mbta_to_kafka.py        # MBTA vehicles -> Kafka (free API key)
 │  └─ opensky_to_kafka.py     # OpenSky aircraft -> Kafka (no key)
+├─ assets/                    # screenshots & images (add yours here)
 ├─ README.md
 └─ LICENSE
 🚀 Quick Start
@@ -66,20 +88,21 @@ MongoDB on 127.0.0.1:27017
 
 Python 3.8+ virtualenv
 
+Install Python deps:
+
 bash
 Copy code
 python3 -m venv ~/venv-heatmap && source ~/venv-heatmap/bin/activate
 pip install --upgrade pip
 pip install pyspark==3.5.1 h3 pymongo flask requests kafka-python
-Create the topic:
+Create the Kafka topic:
 
 bash
 Copy code
 ~/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 \
   --create --topic mobility.positions.v1 --partitions 3 --replication-factor 1
-1) Start a Real Data Producer
-Option A — MBTA (buses/trains, Boston)
-Get a free key from MBTA Vehicles API.
+1) Start a real data producer
+MBTA (Boston transit)
 
 bash
 Copy code
@@ -87,17 +110,16 @@ export MBTA_API_KEY=YOUR_KEY_HERE
 export KAFKA_BOOTSTRAP=localhost:9092
 export KAFKA_TOPIC=mobility.positions.v1
 python producers/mbta_to_kafka.py
-Option B — OpenSky (aircraft, worldwide)
-(No key required; rate-limited.)
+OpenSky (aircraft, worldwide)
 
 bash
 Copy code
 export KAFKA_BOOTSTRAP=localhost:9092
 export KAFKA_TOPIC=mobility.positions.v1
 python producers/opensky_to_kafka.py
-You should see logs like: “Fetched N vehicles / Sent N messages to Kafka”.
+You should see logs like: “Fetched N vehicles / Sent N messages to Kafka.”
 
-2) Run the PySpark Streaming Job
+2) Run the PySpark streaming job
 bash
 Copy code
 export PYSPARK_PYTHON=~/venv-heatmap/bin/python
@@ -112,23 +134,23 @@ $SPARK_HOME/bin/spark-submit \
   --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.1 \
   heatmap_stream.py
 💡 For snappier updates, in code use
-.writeStream.trigger(processingTime="2 seconds")
-and add print(f"[epoch {epoch_id}] rows: {df.count()}", flush=True) inside foreach_batch_func.
+.writeStream.trigger(processingTime="2 seconds").
+Add print(f"[epoch {epoch_id}] rows: {df.count()}", flush=True) inside foreach_batch_func for a heartbeat.
 
-3) Create MongoDB Indexes (once)
+3) Create MongoDB indexes (once)
 js
 Copy code
 // in mongosh
 use mobility
 db.tiles.createIndex({ city:1, grid:1, windowStart:-1 })
 db.tiles.createIndex({ cellId:1, windowStart:-1 })
-db.tiles.createIndex({ centroid: "2dsphere" })
+db.tiles.createIndex({ centroid:"2dsphere" })
 db.tiles.createIndex({ staleAt:1 }, { expireAfterSeconds:0 })
 
 db.positions_latest.createIndex({ provider:1, vehicleId:1 }, { unique:true })
 db.positions_latest.createIndex({ loc:"2dsphere" })
 db.positions_latest.createIndex({ ts:-1 })
-4) View the UI
+4) Run the UI
 bash
 Copy code
 python app.py
@@ -138,10 +160,10 @@ Open http://localhost:5000/
 
 📍 Dots = latest positions per vehicle
 
-🔁 Auto-refresh every 5s (configurable)
+🔁 Auto-refresh every 5s
 
 ⚙️ Configuration
-Environment variables (defaults in parentheses):
+Set via environment variables (defaults in parentheses):
 
 Streaming
 
@@ -189,19 +211,18 @@ mobility.tiles — one doc per (H3 cell, windowStart) (with count, avgSpeedKmh, 
 mobility.positions_latest — one doc per vehicle (ts, loc)
 
 🛠️ Troubleshooting
-Failed to find data source: kafka
-Run with spark-submit --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.1
-(or set spark.jars.packages in code).
+Failed to find data source: kafka → Run with
+spark-submit --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.1
 
-Tiles empty but positions exist
-Ensure timestamp parse matches ISO:
+Tiles empty but positions exist → Ensure ISO parse:
 to_timestamp(ts, "yyyy-MM-dd'T'HH:mm:ss'Z'"), and send fresh timestamps (watermark drops very old events).
 
-Producer NoBrokersAvailable
-Start Kafka and verify: ~/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list.
+Producer NoBrokersAvailable → Start Kafka and verify with
+~/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list
 
-Flask /api/tiles/latest error
-Use the version-agnostic h3_boundary_geojson helper in app.py (works with h3 3.x/4.x).
+Flask /api/tiles/latest error → Use the version-agnostic h3_boundary_geojson helper in app.py (works with h3 3.x/4.x).
+
+WSL tip → Keep MongoDB data under Linux paths (e.g., ~/mongo-data), not /mnt/c/....
 
 🧭 Roadmap
 ⏱️ Merge last N minutes of tiles (/api/tiles/range?minutes=15)
@@ -211,4 +232,3 @@ Use the version-agnostic h3_boundary_geojson helper in app.py (works with h3 3.x
 🔔 WebSocket push via MongoDB Change Streams
 
 🐳 Docker Compose dev stack
-
