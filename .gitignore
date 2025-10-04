@@ -1,0 +1,34 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+.venv/
+venv/
+env/
+*.env
+
+# VS Code / IDE
+.vscode/
+.idea/
+
+# Spark / Kafka / Logs
+spark-warehouse/
+derby.log
+metastore_db/
+checkpoint/
+tmp/
+*.log
+kafka.out
+kafka-data/
+kafka-logs/
+# Mongo local data (don't commit db files)
+mongo-data/
+data/
+*.bson
+*.wt
+
+# OS
+.DS_Store
+Thumbs.db
