@@ -15,20 +15,14 @@ Stream live GPS feeds into **Kafka**, process them with **PySpark Structured Str
 ## 🧭 System Design
 
 ```mermaid
-%%{init: {'theme':'neutral','themeVariables': {
-  'fontSize':'14px','lineColor':'#9aa0a6','primaryTextColor':'#111'
-}}}%%
 flowchart LR
-  A[Producers<br/>(MBTA • OpenSky • Simulator)] -->|JSON events| B[(Kafka Topic<br/>mobility.positions.v1)]
-  B -->|Structured Streaming| C[PySpark Job<br/>H3 snap + 5-min windows]
-  C -->|upsert| D[(MongoDB)<br/>tiles • positions_latest]
-  D --> E[Flask API<br/>/api/tiles/latest<br/>/api/positions/latest]
-  E --> F[Leaflet UI<br/>Hex heatmap + markers]
-  classDef node fill:#ffffff,stroke:#cfcfcf,rx:8,ry:8;
-  class A,B,C,D,E,F node;
+  A["Producers (MBTA, OpenSky, Simulator)"] -->|JSON events| B["Kafka Topic (mobility.positions.v1)"]
+  B -->|Structured Streaming| C["PySpark Job (H3 snap + 5-min windows)"]
+  C -->|Upsert| D["MongoDB (tiles, positions_latest)"]
+  D --> E["Flask API (/api/tiles/latest, /api/positions/latest)"]
+  E --> F["Leaflet UI (hex heatmap + markers)"]
+
 ⏱️ Streaming Timing (micro-batch)
-mermaid
-Copy code
 sequenceDiagram
 autonumber
 participant P as Producer
@@ -46,11 +40,13 @@ loop Every ~2s (trigger)
   W->>M: GET tiles/positions (REST)
   M-->>W: GeoJSON (hexes & markers)
 end
+
+
 🖼️ Screenshot
 Replace the path below with your own image file.
 
 Example after you add your image:
-![Live heatmap](assets/heatmap.png)
+![Live heatmap](heatmap.png)
 
 
 ✨ Features
