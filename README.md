@@ -45,11 +45,11 @@ loop Every ~2s (trigger)
 end
 ```
 
-🖼️ Screenshot
-Replace the path below with your own image file.
+## 🖼️ Screenshot
+![Traffic app UI](traffic_app.png)
 
 Example after you add your image:
-![Live heatmap](heatmap.png)
+![Live heatmap](traffic_app.png)
 
 
 ✨ Features
