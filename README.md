@@ -16,13 +16,16 @@ Stream live GPS feeds into **Kafka**, process them with **PySpark Structured Str
 
 ```mermaid
 flowchart LR
-  A["Producers (MBTA, OpenSky, Simulator)"] -->|JSON events| B["Kafka Topic (mobility.positions.v1)"]
-  B -->|Structured Streaming| C["PySpark Job (H3 snap + 5-min windows)"]
-  C -->|Upsert| D["MongoDB (tiles, positions_latest)"]
-  D --> E["Flask API (/api/tiles/latest, /api/positions/latest)"]
-  E --> F["Leaflet UI (hex heatmap + markers)"]
+  A[Producers: MBTA, OpenSky, Simulator] -->|JSON events| B[Kafka Topic: mobility.positions.v1]
+  B -->|Structured Streaming| C[PySpark Job: H3 snap + 5-min windows]
+  C -->|Upsert| D[MongoDB: tiles, positions_latest]
+  D --> E[Flask API: /api/tiles/latest, /api/positions/latest]
+  E --> F[Leaflet UI: hex heatmap + markers]
+```
 
-⏱️ Streaming Timing (micro-batch)
+### ⏱️ Streaming Timing (micro-batch)
+
+```mermaid
 sequenceDiagram
 autonumber
 participant P as Producer
@@ -34,13 +37,13 @@ participant W as Web UI
 P->>K: Publish GPS JSON (key=vehicleId)
 loop Every ~2s (trigger)
   S->>K: Poll new records (latest)
-  K-->>S: Batch Δt of events
+  K-->>S: Batch dt of events
   S->>S: H3 cell + 5-min window aggregate
   S->>M: Upsert tiles & positions_latest
   W->>M: GET tiles/positions (REST)
   M-->>W: GeoJSON (hexes & markers)
 end
-
+```
 
 🖼️ Screenshot
 Replace the path below with your own image file.
