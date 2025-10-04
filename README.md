@@ -48,9 +48,6 @@ end
 ## 🖼️ Screenshot
 ![Traffic app UI](traffic_app.png)
 
-Example after you add your image:
-![Live heatmap](traffic_app.png)
-
 
 ✨ Features
 🔄 Live ingest from MBTA / OpenSky → Kafka
