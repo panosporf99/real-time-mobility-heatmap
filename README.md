@@ -76,6 +76,8 @@ Copy code
 ✅ Tested on WSL2 (Ubuntu). Works on Linux/macOS with minor path tweaks.
 
 0) Prereqs
+
+
 Java 17, Spark 3.5.1
 
 Kafka (single-node KRaft) on localhost:9092
@@ -207,6 +209,8 @@ mobility.tiles — one doc per (H3 cell, windowStart) (with count, avgSpeedKmh, 
 mobility.positions_latest — one doc per vehicle (ts, loc)
 
 🛠️ Troubleshooting
+
+
 Failed to find data source: kafka → Run with
 spark-submit --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.1
 
